@@ -1,0 +1,6 @@
+#OS files
+-----------
+__pycache__
+*.pyc
+spark-warehouse
+

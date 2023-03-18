@@ -10,8 +10,8 @@ if 'LOGS' in appConfigReader.config:
     ERR_FILE = LOG_CFG['ERR_FILE']
 else:
     LOG_LEVEL = "INFO".upper()
-    LOG_FILE = "E:\\Spark\\logs\\irisflowerclassification.log"
-    ERR_FILE = "E:\\Spark\\logs\\irisflowerclassification.err"
+    LOG_FILE = "E:\\Spark\\logs\\car_price_prediction.log"
+    ERR_FILE = "E:\\Spark\\logs\\car_price_prediction.err"
 # Logging format
 formatter = logging.Formatter('%(asctime)s: %(name)s: %(levelname)s: %(message)s')
 

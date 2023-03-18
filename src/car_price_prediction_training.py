@@ -7,78 +7,7 @@ from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from util.applogger import getAppLogger
 from util.appconfigreader import AppConfigReader
-from util.common import convertFeatures
-
-
-def loadCsvFiles(spark, schema, csvDir):
-    '''Loads CSV files from the given path and returns a dataframe
-    Args: spark - Active spark session
-          schema - Schema of the data in csv files
-          csvDir - Path of csv files
-    '''
-    try:
-        loadedData = spark.read.format('csv').schema(schema).load(csvDir)
-        return loadedData
-    except Exception as err:
-        logger.exception('Failed to load csv files')
-        raise
-    else:
-        logger.info("CSV files are loaded successfully")
-
-
-def createPipeline(carData, lrElasticNetParam, lrRegParam):
-    """Creates a pipeline for converting the data into features and label with the required format
-    Args: carData - Input data for the feature and label processing
-          lrElasticNetParam - ElasticNet parameter of LR, 0-L2 penalty and 1-L1 penalty
-          lrRegParam - Regularization parameter
-    """
-    # convert the labels into numeric value
-    labelIndexer = StringIndexer().setInputCol('buying').setOutputCol('label').fit(carData)
-
-    # merge all the feature columns into a vector column
-    va = VectorAssembler(inputCols=[col + '_indexer' for col in featureStrColumns],
-                         outputCol='vec_features')
-
-    # standardizes feature on the merged features data
-    ss = StandardScaler().setInputCol(va.getOutputCol()).setOutputCol('features').fit(va.transform(carData))
-
-    # lr model set feature col which is standardized
-    lr = LogisticRegression().setFeaturesCol('features')
-
-    # convert the numeric label to string value
-    labelConverter = IndexToString(inputCol='prediction', outputCol='predictedLabel', labels=labelIndexer.labels)
-
-    # build stages of preprocessing and model build
-    stages = [labelIndexer, va, ss, lr, labelConverter]
-
-    # build the pipeline with the stages
-    pipeline = Pipeline().setStages(stages)
-
-    # build several hyper-parameters combination used for the model training
-    params = ParamGridBuilder().addGrid(lr.elasticNetParam, lrElasticNetParam) \
-        .addGrid(lr.regParam, lrRegParam).build()
-
-    # evaluate the different models using lrMetric
-    evaluator = MulticlassClassificationEvaluator(labelCol='label',
-                                                  predictionCol='prediction', metricName=lrMetric)
-
-    return pipeline, params, evaluator
-
-
-def trainModels(trainData, pipeline, params, evaluator, numFolds=3):
-    '''Train the models and results it
-    Args: trainData - Data to train LR model
-          pipeline - Pipeline with set of transformers and estimators
-          params - List of parameters used for the model tuning
-          evaluator - Evaluates the model
-          numFolds - Number of splitting data into a set of folds
-    '''
-
-    # perform model training by split the dataset and capture the metrics of each
-    crossValidator = CrossValidator(estimator=pipeline, estimatorParamMaps=params,
-                                    evaluator=evaluator, numFolds=numFolds)
-    cvModels = crossValidator.fit(trainData)
-    return cvModels
+from util.common import convertFeatures, createCarPredictionPipeline, loadCsvFiles, trainModels
 
 
 if __name__ == '__main__':
@@ -126,7 +55,8 @@ if __name__ == '__main__':
             # create the pipeline for preprocessing, build  hyper-parameters combinations
             # and evaluator for the model selection
             logger.info('Create a pipeline with the set of transformer and estimators')
-            pipeline, params, evaluator = createPipeline(carData, lrElasticNetParam, lrRegParam)
+            pipeline, params, evaluator = createCarPredictionPipeline(carData, featureStrColumns,
+                                                                      lrElasticNetParam, lrRegParam, lrMetric)
 
             # train the model with different combination of the parameters
             logger.info('Train and tune the mode with the parameters configured')

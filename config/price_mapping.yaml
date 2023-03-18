@@ -1,0 +1,5 @@
+predict_values:
+  low: 40K to 60K
+  med: 60K to 100K
+  high: 100K to 200K
+  vhigh: more than 200K
